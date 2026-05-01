@@ -126,23 +126,14 @@ Ce qui impose des coefficients de normalisation précis dans R et Y.
 ## 4. La partie radiale R_{n,l}(r)
 
 ```
-         ┌─────────────────────────────────────────────┐  -(r/na₀)    ( 2r  )^l
-R_{n,l} = │  (2/na₀)³ · (n−l−1)!                       │ · e          · ─────    · L^{2l+1}_{n−l−1}(2r/na₀)
-         │  ─────────────────────────────              │               (na₀)
-         └  2n · [(n+l)!]³                             ┘
+R_{n,l}(r) = np.sqrt((2/n*a_o)**3 * factorial(n-l-1) / (2 * n * factorial(n+l)) * np.exp(-(2 * r / (n * a_0)) / 2) * (2 * r / (n * a_0))**l * genlaguerre(n-l-1, 2*l+1)(2 * r / (n * a_0))
 ```
 
-En pratique, on pose `ρ = 2r / (na₀)` pour simplifier :
-
-```
-         ┌──────────────────────────────────┐
-R_{n,l} = │  (2/na₀)³ · (n−l−1)!           │^(1/2)  · e^{-ρ/2} · ρ^l · L^{2l+1}_{n−l−1}(ρ)
-         └  2n · (n+l)!                     ┘
-```
+En pratique, on pose `ρ = 2r / (na₀)` pour simplifier
 
 Avec :
 - `a₀ = 0.529 Å` : rayon de Bohr (en unités atomiques, a₀ = 1)
-- `L^k_n(ρ)` : polynôme de Laguerre associé (voir section suivante)
+- `L^k_n(ρ)` ou `genlaguerre()`: polynôme de Laguerre associé (voir section suivante)
 
 **Interprétation des trois facteurs :**
 
@@ -163,7 +154,7 @@ Le nombre de **noeuds radiaux** (sphères nodales) est exactement `n − l − 1
 Les polynômes de Laguerre émergent de la résolution de l'équation différentielle radiale de Schrödinger. Après substitution et simplification, on obtient l'**équation de Laguerre associée** :
 
 ```
-x · y''(x) + (k+1−x) · y'(x) + n · y(x) = 0
+x * y''(x) + (k+1−x) * y'(x) + n * y(x) = 0
 ```
 
 Les seules solutions polynomiales (bornées, normalisables) de cette équation sont les **polynômes de Laguerre associés** `L^k_n(x)`, qui existent uniquement pour n entier non négatif. C'est précisément cette contrainte qui **quantifie** le nombre quantique principal n.
@@ -171,10 +162,9 @@ Les seules solutions polynomiales (bornées, normalisables) de cette équation s
 ### Formule de récurrence
 
 ```
-L^k_0(x) = 1
-L^k_1(x) = 1 + k − x
-L^k_n(x) = [(2n−1+k−x) · L^k_{n-1}(x) − (n−1+k) · L^k_{n-2}(x)] / n
+L^k_n(x) = (x**(-k)*e**x / factorial(n)) * d**n/(dx**n)(e**(-x)*x**(n+k)) 
 ```
+avec k le facteur n et n le facteur l
 
 ### Premiers polynômes explicites
 
@@ -188,13 +178,17 @@ L^k_2(x) = x²/2 − (k+2)x + (k+1)(k+2)/2
 L^k_3(x) = −x³/6 + (k+3)x²/2 − (k+2)(k+3)x/2 + (k+1)(k+2)(k+3)/6
 ```
 
+![description](screen/Laguerre_poly.svg.png)
+
+
 ### Rôle physique
 
 Le polynôme `L^{2l+1}_{n−l−1}(ρ)` est de degré `n−l−1`. Il possède exactement `n−l−1` racines réelles positives, ce qui correspond aux **n−l−1 noeuds radiaux** de la fonction d'onde.
 
 > **Note pour les illustrations :** Les graphes de R_{n,l}(r) montrent clairement ces noeuds.  
 > Par exemple, R_{3,0} (orbitale 3s) a 2 noeuds radiaux, R_{3,1} (3p) en a 1, et R_{3,2} (3d) n'en a aucun.
-> *(Emplacement prévu pour les images des premières orbitales radiales)*
+
+![description](screen/Orbitales.png)
 
 ---
 
@@ -213,10 +207,10 @@ Y_l^{m-} (θ,φ) = N_{l,m} · P_l^m(cos θ) · sin(|m|φ)  pour m < 0
 ### Facteur de normalisation
 
 ```
-         ┌──────────────────────────────────────┐
-N_{l,m} = │  (2l+1)   (l−|m|)!                 │^(1/2)     ⎧ 1       si m = 0
-         │  ──────  · ────────                 │         × ⎨
-         └  4π       (l+|m|)!                  ┘           ⎩ √2      si m ≠ 0
+         
+                                                                                     ⎧ 1    si m = 0
+N_{l,m} = np.sqrt((2*l+1) / (4*np.pi) * factorial(l-abs(m)) / factorial(l+abs(m))) × ⎨
+                                                                                     ⎩ √2   si m ≠ 0
 ```
 
 ### Polynômes de Legendre associés P_l^m
@@ -400,9 +394,22 @@ Les orbitales atomiques et les **modes de vibration d'une membrane circulaire** 
 
 Frapper un tambour produit un son composé de multiples **modes propres de vibration** — chaque mode a une forme géométrique précise et une fréquence bien définie. De même, l'électron dans l'atome n'est pas une particule qui "tourne" autour du noyau, mais une **onde stationnaire tridimensionnelle** dont les différentes formes sont les orbitales.
 
-Les noeuds des orbitales (surfaces où ψ = 0) sont l'analogue exact des **lignes nodales** visibles sur les figures de Chladni : des zones où la membrane ne vibre jamais. On peut les rendre visibles en saupoudrant du sable sur une plaque métallique que l'on fait vibrer — le sable s'accumule précisément sur les noeuds.
+Dans cette représentation, la distance par rapport au centre de la membrane équivaut à la distance de l'électron au noyau atomique, et l'amplitude de l'écart au plan d'équilibre de la membrane représente la densité de présence de l'électron dans l'atome :
 
-La différence principale : la membrane vibre dans un espace 2D à temps réel, l'électron existe dans un espace 3D sous forme d'une distribution de probabilité — mais la mathématique sous-jacente est la même.
+![description](screen/Drum_vibration_mode03.gif)
+
+Comparable à 3s
+
+![description](screen/Drum_vibration_mode12.gif)
+
+Comparable à 3p
+
+![description](screen/Drum_vibration_mode21.gif)
+
+Comparable à 3d, simulé grace à ce code :
+
+![description](screen/n3_l2_m0.png)
+
 
 ---
 
@@ -421,8 +428,6 @@ python orbitales.py
 ```
 
 Ouvrir ensuite **http://127.0.0.1:8050** dans un navigateur.
-
-> **Important :** ne pas nommer le fichier `code.py` — conflit avec le module Python standard.
 
 ### Contrôles
 
@@ -451,6 +456,15 @@ opacity=0.06   # entre 0.01 (très transparent) et 0.1 (plus dense)
 Toutes les distances sont en **rayons de Bohr** (a₀ ≈ 0.529 Å). En posant `a_0 = 1` dans le code, on travaille en **unités atomiques** — c'est la convention standard en physique atomique.
 
 ---
+
+### Résultats obtenus :
+
+![description](screen/n3_l2_m0.png) 
+Pour des valeurs de n=3, l=2 et m=0
+
+![description](screen/n4_l3_m1.png)
+Pour des valeurs de n=4, l=3 et m=1
+
 
 ## Références
 
